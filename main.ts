@@ -1,20 +1,30 @@
-import { writeFileSync, mkdirSync } from "node:fs";
+import * as nodeFs from "node:fs";
+import { join } from "node:path";
 
-const TEXT =
-  "Version 2.4 says you will find love. Version 2.3 said the same thing, then deprecated love in the changelog.";
+const HOROSCOPE =
+  "Venus enters your deploy queue: expect the Friday push you swore you would never do to page you at 3 AM, right on schedule.";
 
-const chars = [...TEXT];
-if (chars.length < 1 || chars.length > 200) {
-  throw new Error(`entry must be 1-200 characters, got ${chars.length}`);
-}
-if (!TEXT.trim()) {
-  throw new Error("entry must not be only whitespace");
-}
-if (TEXT.includes("\n") || TEXT.includes("\r")) {
-  throw new Error("entry must be a single line");
+function fail(reason: string): never {
+  throw new Error(`invalid entry: ${reason}`);
 }
 
-const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
-mkdirSync(outDir, { recursive: true });
-writeFileSync(`${outDir}/entry.txt`, TEXT, "utf8");
-console.log(`wrote ${chars.length} characters to ${outDir}/entry.txt`);
+function check(line: string): void {
+  const size = [...line].length;
+  if (size < 1) fail("empty entry");
+  if (size > 200) fail(`too long: ${size} characters`);
+  if (line.trim().length === 0) fail("only whitespace");
+  if (/[\n\r]/.test(line)) fail("must be one line");
+  if (!/[.!?]$/.test(line)) fail("must end with sentence punctuation");
+}
+
+function publish(line: string): string {
+  const folder = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+  nodeFs.mkdirSync(folder, { recursive: true });
+  const target = join(folder, "entry.txt");
+  nodeFs.writeFileSync(target, line, "utf8");
+  return target;
+}
+
+check(HOROSCOPE);
+const savedAt = publish(HOROSCOPE);
+console.log(`saved ${[...HOROSCOPE].length} characters to ${savedAt}`);
